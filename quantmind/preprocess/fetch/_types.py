@@ -29,6 +29,15 @@ class Fetched:
     headers: dict[str, str] = field(default_factory=dict)
     """Selected response headers (HTTP fetches only); empty dict otherwise."""
 
+    status_code: int | None = None
+    """HTTP status code when fetched over HTTP; otherwise ``None``."""
+
+    resolved_url: str | None = None
+    """Final URL after redirects; otherwise ``None``."""
+
+    fetched_at: datetime | None = None
+    """UTC capture time for HTTP evidence; otherwise ``None``."""
+
 
 @dataclass(frozen=True, slots=True)
 class RawPaper(Fetched):
@@ -43,5 +52,6 @@ class RawPaper(Fetched):
     authors: tuple[str, ...] = ()
     abstract: str | None = None
     published_at: datetime | None = None
+    updated_at: datetime | None = None
     primary_category: str | None = None
     categories: tuple[str, ...] = ()
