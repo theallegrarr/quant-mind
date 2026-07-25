@@ -25,6 +25,13 @@ on:
       - 'quantmind/knowledge/paper.py'
       - 'quantmind/library/**'
       - 'scripts/verify_pdf_rag_e2e.py'
+      - 'scripts/verify_structure_e2e.py'
+      - 'quantmind/mind/**'
+      - 'quantmind/configs/retrieval.py'
+      - 'quantmind/configs/structure.py'
+      - 'quantmind/flows/paper/**'
+      - 'quantmind/preprocess/outline.py'
+      - 'quantmind/utils/structured_output.py'
       - 'pyproject.toml'
   schedule:
     - cron: "17 3 * * *"
@@ -43,7 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       news: ${{ steps.filter.outputs.news }}
-      paper_flow: ${{ steps.filter.outputs.paper_flow }}
+      paper_semantic: ${{ steps.filter.outputs.paper_semantic }}
+      structure: ${{ steps.filter.outputs.structure }}
 
     steps:
       - name: Checkout
@@ -65,17 +73,31 @@ jobs:
               - 'quantmind/preprocess/format/html.py'
               - 'quantmind/preprocess/fetch/**'
               - 'pyproject.toml'
-            paper_flow:
+            paper_semantic:
               - '.github/workflows/e2e.yml'
               - 'scripts/verify_pdf_rag_e2e.py'
               - 'quantmind/configs/paper.py'
               - 'quantmind/flows/_paper_summary.py'
-              - 'quantmind/flows/paper.py'
+              - 'quantmind/flows/paper/**'
               - 'quantmind/knowledge/paper.py'
               - 'quantmind/library/**'
               - 'quantmind/preprocess/fetch/arxiv.py'
               - 'quantmind/preprocess/format/pdf.py'
               - 'quantmind/rag/**'
+              - 'pyproject.toml'
+            structure:
+              - '.github/workflows/e2e.yml'
+              - 'scripts/verify_structure_e2e.py'
+              - 'quantmind/mind/**'
+              - 'quantmind/configs/retrieval.py'
+              - 'quantmind/configs/structure.py'
+              - 'quantmind/flows/paper/**'
+              - 'quantmind/knowledge/paper.py'
+              - 'quantmind/knowledge/_tree.py'
+              - 'quantmind/library/**'
+              - 'quantmind/preprocess/outline.py'
+              - 'quantmind/preprocess/format/pdf.py'
+              - 'quantmind/utils/structured_output.py'
               - 'pyproject.toml'
 
   news:
@@ -97,20 +119,20 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          cache-dependency-glob: pyproject.toml
+          cache-dependency-glob: uv.lock
 
       - name: Create virtual environment
         run: uv venv
 
       - name: Install project runtime dependencies
-        run: uv pip install --python .venv/bin/python -e .
+        run: uv sync --frozen
 
       - name: Run live news E2E
         run: .venv/bin/python scripts/verify_news_e2e.py
 
   paper-flow:
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.paper_flow == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.paper_semantic == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -129,13 +151,13 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          cache-dependency-glob: pyproject.toml
+          cache-dependency-glob: uv.lock
 
       - name: Create virtual environment
         run: uv venv
 
       - name: Install project runtime dependencies
-        run: uv pip install --python .venv/bin/python -e .
+        run: uv sync --frozen
 
       - name: Check OpenAI credential
         id: openai
@@ -151,3 +173,47 @@ jobs:
       - name: Run live Paper Flow V1 E2E
         if: steps.openai.outputs.available == 'true'
         run: .venv/bin/python scripts/verify_pdf_rag_e2e.py
+
+  structure:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.structure == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install project runtime dependencies
+        run: uv sync --frozen
+
+      - name: Check OpenRouter credential
+        id: openrouter
+        shell: bash
+        run: |
+          if [[ -n "${OPENROUTER_API_KEY}" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping structure-retrieval E2E because OPENROUTER_API_KEY is not configured."
+          fi
+
+      - name: Run live structure-retrieval E2E
+        if: steps.openrouter.outputs.available == 'true'
+        run: .venv/bin/python scripts/verify_structure_e2e.py

@@ -3,7 +3,7 @@
 The standard defines three shapes that share `BaseKnowledge`:
 
 - `FlattenKnowledge` — atomic cards (`News`, `Earnings`, `Factor`, `Thesis`).
-- `TreeKnowledge` — hierarchical artifacts such as future navigation trees.
+- `TreeKnowledge` — conventional hierarchical knowledge artifacts.
 - `GraphKnowledge` — cross-item edges (placeholder, not implemented).
 
 Every concrete subclass is frozen Pydantic v2 with ``extra="forbid"``,
@@ -13,6 +13,7 @@ text and vectors remain rebuildable library-owned data.
 """
 
 from quantmind.knowledge._base import (
+    ArtifactMeta,
     BaseKnowledge,
     Citation,
     ExtractionRef,
@@ -20,7 +21,12 @@ from quantmind.knowledge._base import (
 )
 from quantmind.knowledge._flatten import FlattenKnowledge
 from quantmind.knowledge._graph import GraphKnowledge
-from quantmind.knowledge._tree import TreeKnowledge, TreeNode
+from quantmind.knowledge._tree import (
+    StructureTree,
+    StructureTreeValidationError,
+    TreeKnowledge,
+    TreeNode,
+)
 from quantmind.knowledge.earnings import Earnings
 from quantmind.knowledge.factor import Factor
 from quantmind.knowledge.news import News
@@ -39,15 +45,19 @@ from quantmind.knowledge.paper import (
     PaperCitation,
     PaperCitationDraft,
     PaperCitationValidationError,
-    PaperFlowResult,
     PaperGlobalSummary,
     PaperPageInput,
     PaperParsedBlock,
     PaperParsedManifest,
     PaperParsedPage,
+    PaperSemanticResult,
     PaperSourceFacts,
     PaperSourceRevision,
     PaperSourceSpan,
+    PaperStructureNodeDraft,
+    PaperStructureProducer,
+    PaperStructureTree,
+    PaperStructureTreeDraft,
     PaperSummaryProducer,
     ResolvedPaperArtifact,
 )
@@ -55,6 +65,7 @@ from quantmind.knowledge.thesis import Thesis
 
 __all__ = [
     # Base
+    "ArtifactMeta",
     "BaseKnowledge",
     "Citation",
     "ExtractionRef",
@@ -62,6 +73,8 @@ __all__ = [
     # Shapes
     "FlattenKnowledge",
     "GraphKnowledge",
+    "StructureTree",
+    "StructureTreeValidationError",
     "TreeKnowledge",
     "TreeNode",
     # Concrete
@@ -82,7 +95,7 @@ __all__ = [
     "PaperCitation",
     "PaperCitationDraft",
     "PaperCitationValidationError",
-    "PaperFlowResult",
+    "PaperSemanticResult",
     "PaperGlobalSummary",
     "PaperPageInput",
     "PaperParsedBlock",
@@ -91,6 +104,10 @@ __all__ = [
     "PaperSourceFacts",
     "PaperSourceRevision",
     "PaperSourceSpan",
+    "PaperStructureNodeDraft",
+    "PaperStructureProducer",
+    "PaperStructureTree",
+    "PaperStructureTreeDraft",
     "PaperSummaryProducer",
     "ResolvedPaperArtifact",
     "Thesis",

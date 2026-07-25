@@ -1,10 +1,12 @@
 # QuantMind — Agent Instructions
 
-Guidance for coding agents contributing to this repository. Keep this file
-aligned with `CLAUDE.md` (same core rules); update both in the same change.
+Guidance for coding agents contributing to this repository. This file is the
+single source of repository instructions; `CLAUDE.md` imports it verbatim, so
+edit rules here, not there.
 
-Use [`contexts/README.md`](contexts/README.md) as the repository information
-entry point for either development or library-usage work.
+Start at [`contexts/CONTEXT_MAP.md`](contexts/CONTEXT_MAP.md), the navigation
+index for `contexts/`. [`contexts/README.md`](contexts/README.md) is the
+routing entry point for development or library-usage work.
 
 ## Progressive Context Loading
 
@@ -28,6 +30,18 @@ finance, built **on top of** the OpenAI Agents SDK. It is a domain library,
 not an agent framework: runtime, tracing, tool scaffolding, and multi-agent
 handoff all come from `openai-agents`.
 
+## Positioning
+
+QuantMind is an **agent-native workbench for financial knowledge extraction** —
+its primary consumer is a coding agent working inside this checkout, not only a
+human importing a package (workbench-first, library-second). Two engineering
+dimensions structure it: **context engineering** (any source → typed, cited,
+as-of-correct knowledge) and **harness engineering** (any agent → domain
+specialist, via this repo's contracts, `contexts/`, skills, hooks, and
+deterministic verify).
+The canonical, always-current statement lives in
+[`contexts/design/positioning.md`](contexts/design/positioning.md).
+
 ## Module Map
 
 | Module | Role |
@@ -37,9 +51,9 @@ handoff all come from `openai-agents`.
 | `quantmind/configs/` | Operation cfg + typed input models or unions (`BaseFlowCfg`, `NewsWindow`, `PaperInput`) — depends only on `knowledge` |
 | `quantmind/preprocess/` | Deterministic fetch / format / clean / time utilities — depends only on `utils` |
 | `quantmind/rag/` | Opinionated LlamaIndex document chunking and retrieval — depends only on `preprocess` |
-| `quantmind/flows/` | Apex layer: public library operations (`paper_flow`, `collect_news`, `batch_run`) |
+| `quantmind/flows/` | Apex layer: public library operations (`PaperFlow`, `collect_news`, `batch_run`) |
 | `quantmind/magic.py` | `resolve_magic_input`: natural language → `(input, cfg)` |
-| `quantmind/mind/` | Cognitive layer (memory protocol); landing via the Agents SDK migration (#71) |
+| `quantmind/mind/` | Pure-agentic reasoning layer — memory + agentic (reasoning-based) retrieval where an LLM decides; mechanical retrieval (similarity / BM25) lives in `rag` / `library` |
 | `quantmind/utils/` | Logger only — keep it that way |
 
 The pre-migration agent runtime was removed and archived on the
@@ -74,8 +88,15 @@ the user explicitly authorizes it — fix the underlying issue instead.
 
 ## Architecture Constraints (stable)
 
-1. **Library, not framework** — functions over classes, `Protocol` over ABC,
-   no plugin registries, no hook discovery, no CLI.
+1. **Library, not framework** — use functions for self-contained stateless
+   transformations and small service classes that bind, at construction, the
+   immutable `cfg`/policy/dependency that must stay constant across calls; the
+   runtime operand is passed per call. Binding `cfg` for batch reproducibility
+   alone justifies a class (`PaperFlow(cfg).build(input)`,
+   `AgenticRetriever(cfg).retrieve(structure, q)`), and the cfg *type* may select the
+   shape/strategy (typed dispatch, not a class hierarchy). Keep canonical values
+   free of runtime service state; use `Protocol` over ABC, with no
+   framework-style class hierarchies, plugin registries, hook discovery, or CLI.
 2. **RAG data plane, not framework** — use LlamaIndex directly inside
    `quantmind.rag`; keep upstream types private and do not add retriever,
    vector-store, provider, or backend registries.
@@ -93,7 +114,23 @@ the user explicitly authorizes it — fix the underlying issue instead.
    side effect beyond the call it wraps; otherwise inline it.
 8. **Name public operations by intent** — follow
    `contexts/design/operations/naming.md`; use stage verbs, and reserve
-   `pipeline` for deliberate multi-stage composition.
+   `pipeline` for deliberate multi-stage composition. `flow` as a verb or
+   `*_flow` function name is banned; `Flow` as a noun on a document handle
+   (`PaperFlow`) is allowed.
+9. **Pipelines produce self-contained artifacts** — a `flows` pipeline is pure
+   processing (`input → artifact`) and returns a value usable *and storable*
+   without a store; it does not bind a `library`, persist, or retrieve.
+   `library` only dumps and loads (`put(artifact)` / `open_*`, round-tripping to
+   an identical value); `mind` only retrieves, returning evidence **values**
+   (content included) with any locator as optional provenance. A self-contained
+   artifact carries its own text (and any embeddings) plus the minimal
+   provenance metadata (`as_of` + a light source ref) needed to persist and
+   time-query it standalone — never a reference refilled from a store. Keep that
+   provenance metadata out of the artifact's `id` / `content_hash` (identity
+   stays reproducible); share it via a light provenance base, not full
+   `BaseKnowledge`. Accept modest redundancy to keep artifacts self-contained.
+   Half-finished intermediates stay component seams, not public flows. See
+   `contexts/design/operations/orchestration.md`.
 
 ## Tests and Examples
 
@@ -119,7 +156,7 @@ A new feature ships with a unit test **and** a focused example:
 For commit, pull-request, or component-implementation tasks, load the
 `quantmind-dev` skill and follow the matching reference:
 
-- `.agents/skills/quantmind-dev/SKILL.md` (this toolchain)
+- `.agents/skills/quantmind-dev/SKILL.md` (Codex and other AGENTS.md-based tools)
 - `.claude/skills/quantmind-dev/SKILL.md` (Claude Code)
 
 The two copies are identical; when changing the skill, update both in the
